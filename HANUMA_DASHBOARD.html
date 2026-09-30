@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HANUMA — Underground Mine Inspection System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap');
+
+:root {
+  --coal: #0a0c10;
+  --mine: #0d1117;
+  --panel: #111827;
+  --card: #1a2235;
+  --border: #1e3a5f;
+  --glow: #00d4ff;
+  --glow2: #00ff88;
+  --warn: #ff9500;
+  --danger: #ff2d55;
+  --safe: #30d158;
+  --text: #e8f4f8;
+  --muted: #8899aa;
+  --gold: #ffd60a;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--coal);
+  color: var(--text);
+  font-family: 'Exo 2', sans-serif;
+  overflow-x: hidden;
+  cursor: crosshair;
+}
+
+/* ── SCANLINE OVERLAY ── */
+body::before {
+  content:'';
+  position:fixed; inset:0; pointer-events:none; z-index:9999;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+}
+
+/* ── HEADER ── */
+.header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 24px;
+  background: linear-gradient(90deg, #0a0c10, #0d1a2e, #0a0c10);
+  border-bottom: 1px solid var(--border);
+  position:sticky; top:0; z-index:100;
+}
+.header-logo {
+  display:flex; align-items:center; gap:16px;
+}
+.logo-3d {
+  width:52px; height:52px;
+  background: linear-gradient(135deg, #0d2b5e, #1a4a8a);
+  border-radius:8px; border:1px solid var(--glow);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Orbitron',monospace; font-size:18px; font-weight:900;
+  color:var(--glow); text-shadow:0 0 12px var(--glow);
+  box-shadow:0 0 20px rgba(0,212,255,0.3);
+  animation: logopulse 3s ease-in-out infinite;
+}
+@keyframes logopulse {
+  0%,100%{box-shadow:0 0 20px rgba(0,212,255,0.3);}
+  50%{box-shadow:0 0 35px rgba(0,212,255,0.6);}
+}
+.logo-text h1 {
+  font-family:'Orbitron',monospace; font-size:22px; font-weight:900;
+  color:var(--glow); letter-spacing:4px;
+  text-shadow:0 0 20px var(--glow);
+}
+.logo-text p { font-size:11px; color:var(--muted); letter-spacing:2px; }
+.header-status {
+  display:flex; align-items:center; gap:24px;
+}
+.status-item {
+  text-align:center;
+}
+.status-item .val {
+  font-family:'Orbitron',monospace; font-size:14px; font-weight:700; color:var(--glow2);
+}
+.status-item .lbl { font-size:10px; color:var(--muted); letter-spacing:1px; }
+.live-dot {
+  display:flex; align-items:center; gap:6px;
+  font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--safe);
+}
+.dot { width:8px; height:8px; border-radius:50%; background:var(--safe);
+  animation: blink 1s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
+
+/* ── CREDITS BANNER ── */
+.credits {
+  background: linear-gradient(90deg, #0a1628, #0d2040, #0a1628);
+  border-bottom:1px solid rgba(0,212,255,0.2);
+  padding:6px 24px;
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:11px; color:var(--muted); letter-spacing:1px;
+}
+.credits span { display:flex; align-items:center; gap:8px; }
+.credits strong { color:var(--gold); }
+
+/* ── MAIN LAYOUT ── */
+.main { padding:16px; display:grid; gap:16px; }
+
+/* ── TOP ROW ── */
+.top-row {
+  display:grid;
+  grid-template-columns: 380px 1fr 320px;
+  gap:16px;
+}
+
+/* ── PANEL BASE ── */
+.panel {
+  background: var(--panel);
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+  position:relative;
+}
+.panel::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:2px;
+  background: linear-gradient(90deg, transparent, var(--glow), transparent);
+  opacity:0.6;
+}
+.panel-title {
+  padding:12px 16px 8px;
+  font-family:'Orbitron',monospace; font-size:11px; font-weight:700;
+  color:var(--glow); letter-spacing:3px; text-transform:uppercase;
+  border-bottom:1px solid rgba(30,58,95,0.5);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.panel-title span { color:var(--muted); font-size:10px; letter-spacing:1px; font-family:'Exo 2',sans-serif; }
+
+/* ── 3D ROVER CANVAS ── */
+#roverCanvas {
+  width:100%; height:320px;
+  background: radial-gradient(ellipse at center, #0d1a2e 0%, #050810 100%);
+  border-radius:0 0 12px 12px;
+}
+.rover-label {
+  position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
+  font-family:'Orbitron',monospace; font-size:10px; color:var(--glow);
+  letter-spacing:2px; text-shadow:0 0 8px var(--glow);
+  background:rgba(0,0,0,0.6); padding:4px 12px; border-radius:20px;
+  border:1px solid rgba(0,212,255,0.3);
+}
+
+/* ── GPS MAP & STREAM ── */
+.gps-map {
+  padding:16px; height:360px; position:relative; overflow: hidden;
+}
+#mapCanvas { width:100%; height:100%; border-radius:8px; }
+#piStream {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: calc(100% - 32px);
+  height: calc(100% - 32px);
+  border-radius: 8px;
+  object-fit: cover;
+  z-index: 10;
+  display: none; /* Hidden by default until connected */
+  border: 1px solid var(--glow);
+  box-shadow: 0 0 15px rgba(0,212,255,0.2);
+}
+
+.gps-coords {
+  position:absolute; bottom:24px; left:24px;
+  background:rgba(0,0,0,0.8); border:1px solid var(--glow);
+  border-radius:8px; padding:8px 14px;
+  font-family:'Share Tech Mono',monospace; font-size:11px;
+  z-index: 20; /* Ensure this stays on top of the stream */
+}
+.gps-coords div { color:var(--glow2); }
+.gps-coords small { color:var(--muted); }
+
+/* ── SIGNAL PANEL ── */
+.signal-panel { padding:16px; }
+.signal-meter {
+  margin-bottom:16px;
+}
+.signal-label {
+  display:flex; justify-content:space-between;
+  font-size:12px; margin-bottom:6px;
+}
+.signal-bar-wrap {
+  background:#0d1117; border-radius:4px; height:10px; overflow:hidden;
+  border:1px solid var(--border);
+}
+.signal-bar {
+  height:100%; border-radius:4px;
+  transition: width 0.5s ease, background 0.3s;
+  position:relative;
+}
+.signal-bar::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(90deg, transparent 70%, rgba(255,255,255,0.3));
+  animation: shimmer 2s linear infinite;
+}
+@keyframes shimmer { from{transform:translateX(-100%);} to{transform:translateX(100%);} }
+.conn-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px;
+}
+.conn-item {
+  background:var(--card); border-radius:8px; padding:10px;
+  border:1px solid var(--border); text-align:center;
+}
+.conn-item .cv { font-family:'Orbitron',monospace; font-size:16px; font-weight:700; }
+.conn-item .cl { font-size:10px; color:var(--muted); margin-top:2px; }
+
+/* ── GAS GAUGES ROW ── */
+.gas-row {
+  display:grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap:12px;
+}
+.gas-card {
+  background:var(--card); border-radius:12px;
+  padding:14px; border:1px solid var(--border);
+  position:relative; overflow:hidden; text-align:center;
+  transition:all 0.3s;
+}
+.gas-card::before {
+  content:''; position:absolute; bottom:0; left:0; right:0;
+  height:3px; border-radius:0 0 12px 12px;
+}
+.gas-card.safe::before { background:var(--safe); }
+.gas-card.warn::before { background:var(--warn); }
+.gas-card.danger::before { background:var(--danger); animation:flashborder 0.5s ease-in-out infinite; }
+@keyframes flashborder { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+.gas-name { font-size:10px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:4px; }
+.gas-symbol { font-family:'Orbitron',monospace; font-size:13px; font-weight:700; color:var(--glow); margin-bottom:8px; }
+.gas-val { font-family:'Orbitron',monospace; font-size:24px; font-weight:900; line-height:1; }
+.gas-unit { font-size:10px; color:var(--muted); margin-top:2px; }
+.gas-status { font-size:10px; font-weight:700; margin-top:6px; letter-spacing:1px; }
+.safe-t { color:var(--safe); }
+.warn-t { color:var(--warn); }
+.danger-t { color:var(--danger); }
+.gas-radial { margin:8px auto; }
+
+/* ── CHARTS ROW ── */
+.charts-row {
+  display:grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap:16px;
+}
+.chart-inner { padding:12px 16px 16px; }
+.chart-wrap { position:relative; height:200px; }
+
+/* ── ENV ROW ── */
+.env-row {
+  display:grid;
+  grid-template-columns:1fr 1fr 300px;
+  gap:16px;
+}
+
+/* ── CSV PANEL ── */
+.csv-panel { padding:16px; }
+.csv-btns { display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+.btn {
+  padding:8px 16px; border-radius:8px; border:none; cursor:pointer;
+  font-family:'Exo 2',sans-serif; font-size:12px; font-weight:600;
+  letter-spacing:1px; transition:all 0.2s;
+}
+.btn-primary {
+  background:linear-gradient(135deg, #0d2b5e, #1a4a8a);
+  color:var(--glow); border:1px solid var(--glow);
+}
+.btn-primary:hover { background:linear-gradient(135deg, #1a4a8a, #2860b0); box-shadow:0 0 12px rgba(0,212,255,0.4); }
+.btn-success {
+  background:linear-gradient(135deg, #0d3b1f, #1a6b35);
+  color:var(--safe); border:1px solid var(--safe);
+}
+.btn-success:hover { box-shadow:0 0 12px rgba(48,209,88,0.4); }
+.btn-warn {
+  background:linear-gradient(135deg, #3b2200, #7a4400);
+  color:var(--warn); border:1px solid var(--warn);
+}
+.btn-warn:hover { box-shadow:0 0 12px rgba(255,149,0,0.4); }
+
+.csv-table-wrap {
+  max-height:220px; overflow-y:auto;
+  border:1px solid var(--border); border-radius:8px;
+}
+.csv-table {
+  width:100%; border-collapse:collapse;
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+}
+.csv-table th {
+  background:var(--mine); color:var(--glow); padding:6px 8px;
+  text-align:left; font-size:9px; letter-spacing:1px;
+  position:sticky; top:0; border-bottom:1px solid var(--border);
+}
+.csv-table td {
+  padding:5px 8px; border-bottom:1px solid rgba(30,58,95,0.3);
+  color:var(--text);
+}
+.csv-table tr:hover td { background:rgba(0,212,255,0.05); }
+
+/* ── DISTANCE / RADAR ── */
+#radarCanvas { width:100%; height:260px; }
+
+/* ── ALERTS ── */
+.alerts-panel { padding:16px; }
+.alert-item {
+  display:flex; align-items:flex-start; gap:10px;
+  padding:8px 10px; border-radius:8px; margin-bottom:8px;
+  animation:slidein 0.3s ease;
+}
+@keyframes slidein { from{opacity:0;transform:translateX(-10px);} to{opacity:1;transform:none;} }
+.alert-item.safe { background:rgba(48,209,88,0.1); border:1px solid rgba(48,209,88,0.3); }
+.alert-item.warn { background:rgba(255,149,0,0.1); border:1px solid rgba(255,149,0,0.3); }
+.alert-item.danger { background:rgba(255,45,85,0.15); border:1px solid rgba(255,45,85,0.4); animation:alertflash 1s ease infinite; }
+@keyframes alertflash { 0%,100%{background:rgba(255,45,85,0.15);} 50%{background:rgba(255,45,85,0.25);} }
+.alert-icon { font-size:16px; }
+.alert-text .at { font-size:11px; font-weight:700; }
+.alert-text .as { font-size:10px; color:var(--muted); margin-top:1px; }
+
+/* ── SPEED/DEPTH DIALS ── */
+.dials-row { display:flex; gap:16px; padding:16px; justify-content:space-around; }
+.dial-wrap { text-align:center; }
+.dial-label { font-size:10px; color:var(--muted); margin-top:6px; letter-spacing:2px; text-transform:uppercase; }
+.dial-val { font-family:'Orbitron',monospace; font-size:14px; color:var(--glow); margin-top:2px; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:var(--mine); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+/* DANGER OVERLAY */
+.danger-overlay {
+  position:fixed; inset:0; pointer-events:none; z-index:9998;
+  border:3px solid transparent; transition:border-color 0.3s;
+}
+.danger-overlay.active {
+  border-color:var(--danger);
+  box-shadow:inset 0 0 60px rgba(255,45,85,0.15);
+  animation:dangerflash 0.5s ease-in-out infinite;
+}
+@keyframes dangerflash { 0%,100%{border-color:rgba(255,45,85,0.8);} 50%{border-color:rgba(255,45,85,0.2);} }
+
+.badge {
+  display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700;
+}
+.badge-safe { background:rgba(48,209,88,0.2); color:var(--safe); border:1px solid rgba(48,209,88,0.4); }
+.badge-warn { background:rgba(255,149,0,0.2); color:var(--warn); border:1px solid rgba(255,149,0,0.4); }
+.badge-danger { background:rgba(255,45,85,0.2); color:var(--danger); border:1px solid rgba(255,45,85,0.4); }
+</style>
+</head>
+<body>
+
+<div class="danger-overlay" id="dangerOverlay"></div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <div class="logo-3d">H</div>
+    <div class="logo-text">
+      <h1>HANUMA</h1>
+      <p>HAZARD ANALYSIS & NAVIGATION UNIT FOR MINE ASSISTANCE</p>
+    </div>
+  </div>
+  <div class="header-status">
+    <div class="status-item"><div class="val" id="hTime">--:--:--</div><div class="lbl">MISSION TIME</div></div>
+    <div class="status-item"><div class="val" id="hDepth">0.0 m</div><div class="lbl">DEPTH</div></div>
+    <div class="status-item"><div class="val" id="hDist">0.00 km</div><div class="lbl">DISTANCE</div></div>
+    <div class="status-item"><div class="val" id="hBatt">98%</div><div class="lbl">BATTERY</div></div>
+    <div class="live-dot"><div class="dot"></div>LIVE</div>
+  </div>
+</div>
+
+<!-- CREDITS -->
+<div class="credits">
+  <span><strong>INVENTORS:</strong> B. Venkat Gopi Nayak &nbsp;|&nbsp; M. Bindu Madhavi</span>
+  <span><strong>PNT LAB — Geospatial Intelligence & Applications Laboratory &nbsp;|&nbsp; IIT Tirupati Navavishkar I-Hub Foundation</strong></span>
+  <span><strong>VRSEC</strong> — Velagapudi Ramakrishna Siddhartha Engineering College, Vijayawada</span>
+</div>
+
+<div class="main">
+
+  <!-- TOP ROW -->
+  <div class="top-row">
+
+    <!-- 3D ROVER -->
+    <div class="panel">
+      <div class="panel-title">3D ROVER MODEL <span id="roverStatus">AUTONOMOUS MODE</span></div>
+      <canvas id="roverCanvas"></canvas>
+      <div class="rover-label">HANUMA — PNT Lab IIT Tirupati</div>
+    </div>
+
+    <!-- GPS MAP & STREAM PANEL -->
+    <div class="panel">
+      <div class="panel-title" id="centerPanelTitle">GPS TRAJECTORY MAP <span>NavIC IRNSS</span></div>
+      <div class="gps-map">
+        <!-- Live Stream Image. Will hide if disconnected -->
+        <img id="piStream" src="http://hanuma.local:5000/video_feed" alt="Rover Live Stream">
+        <!-- Original Canvas. Will hide if stream is connected -->
+        <canvas id="mapCanvas"></canvas>
+        <div class="gps-coords">
+          <small>COORDINATES</small>
+          <div id="gLat">LAT: 13.710024°N</div>
+          <div id="gLon">LON: 79.605018°E</div>
+          <div id="gAlt">ALT: 180.4 m</div>
+          <div id="gAcc" style="color:var(--gold);margin-top:4px;">ACC: ±1.8 m CEP</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIGNAL -->
+    <div class="panel">
+      <div class="panel-title">COMMUNICATION <span>LoRa 433 MHz</span></div>
+      <div class="signal-panel">
+        <div class="signal-meter">
+          <div class="signal-label"><span>LoRa Signal (RSSI)</span><span id="sLora" style="color:var(--glow2)">-78 dBm</span></div>
+          <div class="signal-bar-wrap"><div class="signal-bar" id="bLora" style="width:78%;background:linear-gradient(90deg,#00ff88,#00d4ff)"></div></div>
+        </div>
+        <div class="signal-meter">
+          <div class="signal-label"><span>Wi-Fi Link</span><span id="sWifi" style="color:var(--warn)">-91 dBm</span></div>
+          <div class="signal-bar-wrap"><div class="signal-bar" id="bWifi" style="width:32%;background:linear-gradient(90deg,#ff9500,#ffcc00)"></div></div>
+        </div>
+        <div class="signal-meter">
+          <div class="signal-label"><span>NavIC GNSS</span><span id="sGps" style="color:var(--glow)">8 SVs</span></div>
+          <div class="signal-bar-wrap"><div class="signal-bar" id="bGps" style="width:80%;background:linear-gradient(90deg,#00d4ff,#0088ff)"></div></div>
+        </div>
+        <div class="signal-meter">
+          <div class="signal-label"><span>Battery</span><span id="sBatt" style="color:var(--safe)">98%</span></div>
+          <div class="signal-bar-wrap"><div class="signal-bar" id="bBatt" style="width:98%;background:linear-gradient(90deg,#30d158,#00ff88)"></div></div>
+        </div>
+        <div class="conn-grid" style="margin-top:12px;">
+          <div class="conn-item"><div class="cv" style="color:var(--glow)" id="cPkts">0</div><div class="cl">PACKETS SENT</div></div>
+          <div class="conn-item"><div class="cv" style="color:var(--safe)" id="cAck">100%</div><div class="cl">ACK RATE</div></div>
+          <div class="conn-item"><div class="cv" style="color:var(--warn)" id="cLat">18ms</div><div class="cl">LATENCY</div></div>
+          <div class="conn-item"><div class="cv" style="color:var(--gold)" id="cNode">2</div><div class="cl">RELAY NODES</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAS SENSORS ROW -->
+  <div class="gas-row" id="gasRow">
+    <!-- filled by JS -->
+  </div>
+
+  <!-- CHARTS ROW -->
+  <div class="charts-row">
+    <div class="panel">
+      <div class="panel-title">GAS TREND — 60s <span>REAL-TIME</span></div>
+      <div class="chart-inner"><div class="chart-wrap"><canvas id="gasChart"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">ATMOSPHERE COMPOSITION <span>PIE CHART</span></div>
+      <div class="chart-inner"><div class="chart-wrap"><canvas id="pieChart"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">DISTANCE SENSORS <span>OBSTACLE MAP</span></div>
+      <div class="chart-inner"><div class="chart-wrap"><canvas id="radarChart"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- ENV ROW -->
+  <div class="env-row">
+    <div class="panel">
+      <div class="panel-title">ENVIRONMENT DATA <span>TEMP / HUMIDITY / PRESSURE</span></div>
+      <div class="chart-inner"><div class="chart-wrap" style="height:220px;"><canvas id="envChart"></canvas></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">MISSION ALERTS <span id="alertCount">0 ACTIVE</span></div>
+      <div class="alerts-panel" id="alertsPanel" style="max-height:280px;overflow-y:auto;"></div>
+    </div>
+
+    <!-- CSV PANEL -->
+    <div class="panel">
+      <div class="panel-title">DATA LOGGER <span>CSV EXPORT</span></div>
+      <div class="csv-panel">
+        <div class="csv-btns">
+          <button class="btn btn-success" onclick="exportCSV()">⬇ SAVE CSV</button>
+          <button class="btn btn-primary" onclick="loadCSV()">📂 OPEN CSV DATA</button>
+          <button class="btn btn-warn" onclick="clearLog()">🗑 CLEAR LOG</button>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;">
+          <span id="logCount">0</span> records logged &nbsp;|&nbsp;
+          Interval: 2s &nbsp;|&nbsp;
+          <span id="logSize">0 KB</span>
+        </div>
+        <div class="csv-table-wrap">
+          <table class="csv-table">
+            <thead>
+              <tr>
+                <th>TIMESTAMP</th><th>CH4%</th><th>CO</th><th>O2%</th><th>CO2%</th>
+                <th>TEMP</th><th>HUM%</th><th>LAT</th><th>LON</th><th>STATUS</th>
+              </tr>
+            </thead>
+            <tbody id="csvBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// LIVE STREAM / MAP FALLBACK LOGIC
+// ══════════════════════════════════════════════════════
+const piStream = document.getElementById('piStream');
+const mapCanvasEl = document.getElementById('mapCanvas');
+const centerTitle = document.getElementById('centerPanelTitle');
+
+// When stream successfully loads
+piStream.onload = function() {
+  piStream.style.display = 'block';
+  mapCanvasEl.style.display = 'none';
+  centerTitle.innerHTML = 'LIVE CAMERA STREAM <span>HANUMA ROVER</span>';
+};
+
+// When stream fails (Pi is off or script not running)
+piStream.onerror = function() {
+  piStream.style.display = 'none';
+  mapCanvasEl.style.display = 'block';
+  centerTitle.innerHTML = 'GPS TRAJECTORY MAP <span>NavIC IRNSS</span>';
+  
+  // Try to reconnect every 5 seconds without freezing the page
+  setTimeout(() => {
+    piStream.src = "http://hanuma.local:5000/video_feed?" + new Date().getTime();
+  }, 5000);
+};
+
+// Kickoff the initial check
+piStream.src = "http://hanuma.local:5000/video_feed?" + new Date().getTime();
+
+// ══════════════════════════════════════════════════════
+// SENSOR STATE
+// ══════════════════════════════════════════════════════
+const S = {
+  ch4:1.2, co:5.0, o2:20.5, co2:0.12, h2s:0.8, dust:0.45,
+  temp:32.0, hum:78.0, pres:101.3,
+  lat:13.710000, lon:79.605000, alt:180.0,
+  depth:12.4, speed:0.28, dist:0.0,
+  frontD:180, leftD:320, rightD:290, rearD:450,
+  loraRSSI:-78, wifiRSSI:-91, gnss:8, batt:98,
+  pkts:0, ackRate:99.8, latency:18,
+  missionSec:0
+};
+
+const GAS_CFG = [
+  {key:'ch4',  name:'Methane',   sym:'CH₄',  unit:'% LEL', warn:5,   danger:20,  decimals:2, color:'#ff9500'},
+  {key:'co',   name:'Carbon Mono',sym:'CO',   unit:'ppm',   warn:25,  danger:50,  decimals:1, color:'#ff6b35'},
+  {key:'o2',   name:'Oxygen',    sym:'O₂',   unit:'%',     warnL:18, dangerL:16, decimals:1, color:'#00d4ff', inverted:true},
+  {key:'co2',  name:'CO₂',       sym:'CO₂',  unit:'%',     warn:0.5, danger:1.5, decimals:3, color:'#a855f7'},
+  {key:'h2s',  name:'H₂S',       sym:'H₂S',  unit:'ppm',   warn:1,   danger:10,  decimals:2, color:'#ff2d55'},
+  {key:'dust', name:'Coal Dust', sym:'PM₂.₅',unit:'mg/m³', warn:2.0, danger:5.0, decimals:2, color:'#8b9eb7'},
+];
+
+// ── Gas status helper
+function gasStatus(cfg, val) {
+  if (cfg.inverted) {
+    if (val <= cfg.dangerL) return 'danger';
+    if (val <= cfg.warnL)   return 'warn';
+    return 'safe';
+  }
+  if (val >= cfg.danger) return 'danger';
+  if (val >= cfg.warn)   return 'warn';
+  return 'safe';
+}
+
+// ── Noise walk
+function walk(v, noise, mn, mx) {
+  v += (Math.random()-0.5)*noise;
+  return Math.max(mn, Math.min(mx, v));
+}
+
+// ── Data log
+let dataLog = [];
+let alertLog = [];
+
+// ══════════════════════════════════════════════════════
+// 3D ROVER — THREE.JS
+// ══════════════════════════════════════════════════════
+(function initRover(){
+  const canvas = document.getElementById('roverCanvas');
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.shadowMap.enabled = true;
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x050810, 0.08);
+
+  const camera = new THREE.PerspectiveCamera(50, canvas.clientWidth/canvas.clientHeight, 0.1, 100);
+  camera.position.set(2.5, 1.8, 2.5);
+  camera.lookAt(0,0,0);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0x0d2b5e, 1.5));
+  const dLight = new THREE.DirectionalLight(0x00d4ff, 2);
+  dLight.position.set(3,5,3); dLight.castShadow=true; scene.add(dLight);
+  const pLight = new THREE.PointLight(0x00ff88, 1.5, 8);
+  pLight.position.set(-2,2,-1); scene.add(pLight);
+  const pLight2 = new THREE.PointLight(0xff9500, 0.8, 6);
+  pLight2.position.set(2,1,2); scene.add(pLight2);
+
+  // Ground grid
+  const gridHelper = new THREE.GridHelper(12, 20, 0x1e3a5f, 0x0d1a2e);
+  gridHelper.position.y = -0.5; scene.add(gridHelper);
+
+  // ── Chassis body
+  const mat = {
+    chassis: new THREE.MeshPhongMaterial({color:0x0a0f1e, specular:0x00d4ff, shininess:80}),
+    metal:   new THREE.MeshPhongMaterial({color:0x1a2a3a, specular:0x88aacc, shininess:120}),
+    wheel:   new THREE.MeshPhongMaterial({color:0x080c12, specular:0x334455, shininess:60}),
+    hub:     new THREE.MeshPhongMaterial({color:0x223344, specular:0xaaddff, shininess:150}),
+    glow:    new THREE.MeshPhongMaterial({color:0x00d4ff, emissive:0x004466, shininess:200}),
+    red:     new THREE.MeshPhongMaterial({color:0xff2200, emissive:0x440000}),
+    solar:   new THREE.MeshPhongMaterial({color:0x1a3a1a, specular:0x00ff44, shininess:200}),
+    gold:    new THREE.MeshPhongMaterial({color:0xb8860b, emissive:0x443300, shininess:150}),
+  };
+
+  const rover = new THREE.Group();
+
+  // Main chassis box
+  const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.25, 0.8), mat.chassis);
+  chassis.castShadow=true; rover.add(chassis);
+
+  // Chassis top plate
+  const topPlate = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.03, 0.75), mat.metal);
+  topPlate.position.y = 0.14; rover.add(topPlate);
+
+  // Chassis ribs
+  [-0.4, 0, 0.4].forEach(x=>{
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.28, 0.82), mat.metal);
+    rib.position.x=x; rover.add(rib);
+  });
+
+  // Solar panel
+  const solar = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.015, 0.55), mat.solar);
+  solar.position.set(0, 0.55, 0); rover.add(solar);
+  // Solar panel frame
+  const sFrame = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.02, 0.60), mat.gold);
+  sFrame.position.set(0, 0.54, 0); rover.add(sFrame);
+
+  // Sensor dome
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 8, 0, Math.PI*2, 0, Math.PI/2), mat.metal);
+  dome.position.set(0, 0.28, 0); rover.add(dome);
+
+  // LiDAR unit
+  const lidar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.10, 16), mat.glow);
+  lidar.position.set(0.3, 0.3, 0); rover.add(lidar);
+
+  // Front camera block
+  const cam = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.14), mat.metal);
+  cam.position.set(0.73, 0.22, 0); rover.add(cam);
+  // Camera lens (left)
+  const lens1 = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.04, 12), mat.glow);
+  lens1.rotation.z=Math.PI/2; lens1.position.set(0.77, 0.22, 0.04); rover.add(lens1);
+  // Camera lens (right)
+  const lens2 = lens1.clone(); lens2.position.z=-0.04; rover.add(lens2);
+
+  // Headlights
+  const hlMat = new THREE.MeshPhongMaterial({color:0xffffcc, emissive:0x888844});
+  const hl1 = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), hlMat);
+  hl1.position.set(0.72, 0.05, 0.24); rover.add(hl1);
+  const hl2 = hl1.clone(); hl2.position.z=-0.24; rover.add(hl2);
+
+  // Beacon (red)
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 10), mat.red);
+  beacon.position.set(0.3, 0.42, 0); rover.add(beacon);
+
+  // Antenna
+  const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.008, 0.5, 8), mat.metal);
+  ant.position.set(-0.55, 0.52, 0); rover.add(ant);
+  const antBall = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8), mat.glow);
+  antBall.position.set(-0.55, 0.77, 0); rover.add(antBall);
+
+  // Rocker arm bars (visual)
+  [0.38, -0.38].forEach(z=>{
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.04, 0.04), mat.metal);
+    bar.position.set(0, -0.1, z); rover.add(bar);
+    const bar2 = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.04, 0.04), mat.metal);
+    bar2.position.set(-0.1, -0.18, z); rover.add(bar2);
+  });
+
+  // Wheels — 6 wheels [x, z] positions
+  const wheelPos = [
+    [0.52, 0.44], [0.0, 0.44], [-0.52, 0.44],
+    [0.52,-0.44], [0.0,-0.44], [-0.52,-0.44]
+  ];
+  const wheels = [];
+  wheelPos.forEach(([x,z])=>{
+    const wg = new THREE.Group();
+    // Wheel cylinder axis along Z (axle = Z, disc in XY plane, rolls forward in X)
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.14, 24), mat.wheel);
+    rim.rotation.x = Math.PI/2; rim.castShadow=true; wg.add(rim);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.16, 12), mat.hub);
+    hub.rotation.x = Math.PI/2; wg.add(hub);
+    // Hub spokes — 5 spokes radiating from center, in XY plane
+    for(let i=0;i<5;i++){
+      const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.025, 0.025), mat.hub);
+      spoke.rotation.z = i * Math.PI/5;
+      wg.add(spoke);
+    }
+    // Tread lugs — placed around rim in XY plane, extending outward
+    for(let i=0;i<14;i++){
+      const angle = i * Math.PI*2/14;
+      const lug = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.055, 0.15), mat.metal);
+      lug.position.set(Math.cos(angle)*0.21, Math.sin(angle)*0.21, 0);
+      lug.rotation.z = angle;
+      wg.add(lug);
+    }
+    wg.position.set(x, -0.28, z);
+    rover.add(wg); wheels.push(wg);
+  });
+
+  // HANUMA label (floating text using sprite)
+  const labelCanvas = document.createElement('canvas');
+  labelCanvas.width=512; labelCanvas.height=64;
+  const lctx = labelCanvas.getContext('2d');
+  lctx.fillStyle='rgba(0,0,0,0)';
+  lctx.fillRect(0,0,512,64);
+  lctx.font='bold 28px Orbitron, monospace';
+  lctx.fillStyle='#00d4ff';
+  lctx.textAlign='center';
+  lctx.fillText('HANUMA', 256, 36);
+  lctx.font='12px Exo 2, sans-serif';
+  lctx.fillStyle='#8899aa';
+  lctx.fillText('PNT Lab — IIT Tirupati', 256, 56);
+  const labelTex = new THREE.CanvasTexture(labelCanvas);
+  const labelMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.8, 0.22),
+    new THREE.MeshBasicMaterial({map:labelTex, transparent:true, side:THREE.DoubleSide})
+  );
+  labelMesh.position.set(0, 1.0, 0);
+  rover.add(labelMesh);
+
+  scene.add(rover);
+
+  // Mine rocks
+  const rockMat = new THREE.MeshPhongMaterial({color:0x1a1208, specular:0x334422, shininess:20});
+  [[2.5,0,1.5],[-2,0,2.2],[1.8,0,-2.5],[-1.5,0,-1.8]].forEach(([x,y,z])=>{
+    const r=new THREE.Mesh(new THREE.SphereGeometry(0.3+Math.random()*0.3,8,6),rockMat);
+    r.position.set(x,y-0.3,z); r.scale.y=0.6; scene.add(r);
+  });
+
+  // Mine wall suggestion lines
+  const wallGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(10,4,8));
+  const wallMat2 = new THREE.LineBasicMaterial({color:0x1e3a5f, opacity:0.4, transparent:true});
+  const wallLines = new THREE.LineSegments(wallGeo, wallMat2);
+  wallLines.position.y=1.5; scene.add(wallLines);
+
+  // Resize
+  function resize(){
+    const w=canvas.clientWidth, h=canvas.clientHeight;
+    renderer.setSize(w,h,false);
+    camera.aspect=w/h; camera.updateProjectionMatrix();
+  }
+  resize();
+  window.addEventListener('resize',resize);
+
+  let t=0;
+  function animate(){
+    requestAnimationFrame(animate);
+    t+=0.016;
+    // Gentle hover only — no side sway so bars stay fixed to chassis
+    rover.position.y = Math.sin(t*0.6)*0.02;
+    // Wheels roll FORWARD: rotate around Z axis (negative = rolls in +X direction)
+    wheels.forEach(w=>{ w.rotation.z -= 0.06; });
+    // Beacon blink
+    beacon.material.emissive.setHex(Math.sin(t*4)>0?0x880000:0x000000);
+    // LiDAR spin
+    lidar.rotation.y+=0.08;
+    // Antball glow
+    antBall.material.emissive.setHex(Math.sin(t*2)>0?0x005588:0x000000);
+    // Solar label face camera
+    labelMesh.lookAt(camera.position);
+    camera.position.x = Math.sin(t*0.15)*2.8+0.5;
+    camera.position.z = Math.cos(t*0.15)*2.8;
+    camera.lookAt(0,0,0);
+    renderer.render(scene,camera);
+  }
+  animate();
+})();
+
+// ══════════════════════════════════════════════════════
+// GPS MAP
+// ══════════════════════════════════════════════════════
+const mapCanvas = document.getElementById('mapCanvas');
+const mctx = mapCanvas.getContext('2d');
+const mapW = mapCanvas.parentElement.clientWidth - 32;
+const mapH = mapCanvas.parentElement.clientHeight - 32;
+mapCanvas.width = mapW; mapCanvas.height = mapH;
+let pathPts = [{x:mapW/2, y:mapH/2}];
+let mapAngle = 0;
+
+function drawMap(){
+  mctx.clearRect(0,0,mapW,mapH);
+  // Background
+  const bg = mctx.createRadialGradient(mapW/2,mapH/2,0,mapW/2,mapH/2,mapW/2);
+  bg.addColorStop(0,'#0d1a2e'); bg.addColorStop(1,'#05080f');
+  mctx.fillStyle=bg; mctx.fillRect(0,0,mapW,mapH);
+  // Grid
+  mctx.strokeStyle='rgba(30,58,95,0.5)'; mctx.lineWidth=1;
+  for(let x=0;x<mapW;x+=40){ mctx.beginPath();mctx.moveTo(x,0);mctx.lineTo(x,mapH);mctx.stroke(); }
+  for(let y=0;y<mapH;y+=40){ mctx.beginPath();mctx.moveTo(0,y);mctx.lineTo(mapW,y);mctx.stroke(); }
+  // North indicator
+  mctx.fillStyle='rgba(0,212,255,0.6)'; mctx.font='bold 11px Orbitron,monospace';
+  mctx.fillText('N ↑', 10, 20);
+  // Scale bar
+  mctx.strokeStyle='rgba(0,212,255,0.5)'; mctx.lineWidth=2;
+  mctx.beginPath(); mctx.moveTo(mapW-80,mapH-15); mctx.lineTo(mapW-30,mapH-15); mctx.stroke();
+  mctx.fillStyle='rgba(136,153,170,0.8)'; mctx.font='9px Exo 2,sans-serif';
+  mctx.fillText('50 m', mapW-72, mapH-20);
+  // Path
+  if(pathPts.length>1){
+    for(let i=1;i<pathPts.length;i++){
+      const alpha = i/pathPts.length;
+      mctx.strokeStyle=`rgba(0,212,255,${alpha*0.8})`;
+      mctx.lineWidth=2;
+      mctx.beginPath();
+      mctx.moveTo(pathPts[i-1].x,pathPts[i-1].y);
+      mctx.lineTo(pathPts[i].x,pathPts[i].y);
+      mctx.stroke();
+    }
+    // Waypoint dots
+    pathPts.filter((_,i)=>i%8===0).forEach(p=>{
+      mctx.fillStyle='rgba(0,255,136,0.4)';
+      mctx.beginPath(); mctx.arc(p.x,p.y,3,0,Math.PI*2); mctx.fill();
+    });
+  }
+  // Current position
+  const cp = pathPts[pathPts.length-1];
+  // Glow ring
+  const rg = mctx.createRadialGradient(cp.x,cp.y,0,cp.x,cp.y,20);
+  rg.addColorStop(0,'rgba(0,212,255,0.3)'); rg.addColorStop(1,'transparent');
+  mctx.fillStyle=rg; mctx.fillRect(cp.x-20,cp.y-20,40,40);
+  // Rover marker
+  mctx.save(); mctx.translate(cp.x,cp.y); mctx.rotate(mapAngle);
+  mctx.fillStyle='#00d4ff'; mctx.strokeStyle='#ffffff'; mctx.lineWidth=1;
+  mctx.beginPath(); mctx.moveTo(0,-10); mctx.lineTo(6,8); mctx.lineTo(0,4); mctx.lineTo(-6,8); mctx.closePath();
+  mctx.fill(); mctx.stroke();
+  mctx.restore();
+  // Label
+  mctx.fillStyle='rgba(0,212,255,0.9)'; mctx.font='bold 9px Orbitron,monospace';
+  mctx.fillText('HANUMA', cp.x+12, cp.y-5);
+  // Mine tunnel outline
+  mctx.strokeStyle='rgba(136,100,50,0.4)'; mctx.lineWidth=18;
+  mctx.lineCap='round'; mctx.lineJoin='round';
+  mctx.beginPath();
+  mctx.moveTo(mapW*0.1, mapH*0.5);
+  mctx.lineTo(mapW*0.5, mapH*0.5);
+  mctx.lineTo(mapW*0.5, mapH*0.3);
+  mctx.lineTo(mapW*0.8, mapH*0.3);
+  mctx.stroke();
+  mctx.strokeStyle='rgba(30,20,10,0.7)'; mctx.lineWidth=12;
+  mctx.beginPath();
+  mctx.moveTo(mapW*0.1, mapH*0.5);
+  mctx.lineTo(mapW*0.5, mapH*0.5);
+  mctx.lineTo(mapW*0.5, mapH*0.3);
+  mctx.lineTo(mapW*0.8, mapH*0.3);
+  mctx.stroke();
+}
+
+// ══════════════════════════════════════════════════════
+// GAS GAUGE CARDS
+// ══════════════════════════════════════════════════════
+function buildGasCards(){
+  const row = document.getElementById('gasRow');
+  row.innerHTML='';
+  GAS_CFG.forEach(cfg=>{
+    const val = S[cfg.key];
+    const st  = gasStatus(cfg, val);
+    const pct = cfg.inverted
+      ? Math.max(0,Math.min(100, (val - 15)/(25-15)*100))
+      : Math.max(0,Math.min(100, val / cfg.danger * 80));
+    const color = st==='safe'?'var(--safe)':st==='warn'?'var(--warn)':'var(--danger)';
+    const stTxt = st==='safe'?'SAFE':st==='warn'?'WARNING':'DANGER';
+    const stCls = st==='safe'?'safe-t':st==='warn'?'warn-t':'danger-t';
+    row.innerHTML+=`
+    <div class="gas-card ${st}" id="gc_${cfg.key}">
+      <div class="gas-name">${cfg.name}</div>
+      <div class="gas-symbol">${cfg.sym}</div>
+      <canvas id="radial_${cfg.key}" width="80" height="80" class="gas-radial"></canvas>
+      <div class="gas-val" style="color:${color}">${val.toFixed(cfg.decimals)}</div>
+      <div class="gas-unit">${cfg.unit}</div>
+      <div class="gas-status ${stCls}">${stTxt}</div>
+    </div>`;
+  });
+  // Draw radial gauges
+  GAS_CFG.forEach(cfg=>drawRadial(cfg));
+}
+
+function drawRadial(cfg){
+  const cv = document.getElementById('radial_'+cfg.key);
+  if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const cx=40,cy=40,r=32;
+  ctx.clearRect(0,0,80,80);
+  const val=S[cfg.key];
+  const st=gasStatus(cfg,val);
+  const color=st==='safe'?'#30d158':st==='warn'?'#ff9500':'#ff2d55';
+  const pct=cfg.inverted
+    ? Math.max(0,Math.min(1,(val-15)/(25-15)))
+    : Math.max(0,Math.min(1,val/cfg.danger*0.8));
+  // Track
+  ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI*0.75,Math.PI*0.25+Math.PI*2);
+  ctx.strokeStyle='rgba(30,58,95,0.6)'; ctx.lineWidth=6; ctx.stroke();
+  // Value arc
+  const end=Math.PI*0.75+pct*Math.PI*1.5;
+  ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI*0.75,end);
+  ctx.strokeStyle=color; ctx.lineWidth=6; ctx.lineCap='round'; ctx.stroke();
+  // Center dot
+  ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2);
+  ctx.fillStyle=color; ctx.fill();
+}
+
+function updateGasCards(){
+  GAS_CFG.forEach(cfg=>{
+    const val=S[cfg.key];
+    const st=gasStatus(cfg,val);
+    const color=st==='safe'?'var(--safe)':st==='warn'?'var(--warn)':'var(--danger)';
+    const stTxt=st==='safe'?'SAFE':st==='warn'?'WARNING':'DANGER';
+    const stCls=st==='safe'?'safe-t':st==='warn'?'warn-t':'danger-t';
+    const card=document.getElementById('gc_'+cfg.key);
+    if(card){
+      card.className=`gas-card ${st}`;
+      card.querySelector('.gas-val').textContent=val.toFixed(cfg.decimals);
+      card.querySelector('.gas-val').style.color=color;
+      const gs=card.querySelector('.gas-status');
+      gs.textContent=stTxt; gs.className=`gas-status ${stCls}`;
+    }
+    drawRadial(cfg);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// CHARTS
+// ══════════════════════════════════════════════════════
+const MAXPTS=30;
+const timeLabels=Array(MAXPTS).fill('');
+const ch4Hist=Array(MAXPTS).fill(1.2);
+const coHist=Array(MAXPTS).fill(5.0);
+const o2Hist=Array(MAXPTS).fill(20.5);
+
+const gasChartInst = new Chart(document.getElementById('gasChart'),{
+  type:'line',
+  data:{
+    labels:timeLabels,
+    datasets:[
+      {label:'CH₄ (% LEL)',data:ch4Hist,borderColor:'#ff9500',backgroundColor:'rgba(255,149,0,0.1)',borderWidth:2,tension:0.4,pointRadius:0,fill:true},
+      {label:'CO (×0.1 ppm)',data:coHist.map(v=>v*0.1),borderColor:'#ff6b35',backgroundColor:'rgba(255,107,53,0.1)',borderWidth:2,tension:0.4,pointRadius:0,fill:true},
+      {label:'O₂ (%)',data:o2Hist,borderColor:'#00d4ff',backgroundColor:'rgba(0,212,255,0.05)',borderWidth:2,tension:0.4,pointRadius:0,yAxisID:'y2'},
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,animation:{duration:200},
+    plugins:{legend:{labels:{color:'#8899aa',font:{size:10}}}},
+    scales:{
+      x:{ticks:{display:false},grid:{color:'rgba(30,58,95,0.3)'},border:{color:'rgba(30,58,95,0.5)'}},
+      y:{ticks:{color:'#8899aa',font:{size:10}},grid:{color:'rgba(30,58,95,0.3)'},border:{color:'rgba(30,58,95,0.5)'}},
+      y2:{position:'right',ticks:{color:'#00d4ff',font:{size:10}},grid:{display:false}}
+    }
+  }
+});
+
+let pieChartInst = new Chart(document.getElementById('pieChart'),{
+  type:'doughnut',
+  data:{
+    labels:['N₂','O₂','CO₂','CH₄','H₂S','Dust','Other'],
+    datasets:[{
+      data:[78.09, 20.5, 0.12, 1.2, 0.08, 0.45, 0.11],
+      backgroundColor:['#1e3a5f','#00d4ff','#a855f7','#ff9500','#ff2d55','#8b9eb7','#334455'],
+      borderColor:'#0d1117', borderWidth:2
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,animation:{duration:500},
+    plugins:{
+      legend:{position:'right',labels:{color:'#8899aa',font:{size:10},boxWidth:12}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.parsed.toFixed(3)}%`}}
+    }
+  }
+});
+
+const radarChartInst = new Chart(document.getElementById('radarChart'),{
+  type:'radar',
+  data:{
+    labels:['FRONT','FRONT-L','LEFT','REAR-L','REAR','REAR-R','RIGHT','FRONT-R'],
+    datasets:[{
+      label:'Obstacle (cm)',
+      data:[180,320,290,450,400,350,310,260],
+      backgroundColor:'rgba(0,212,255,0.15)',
+      borderColor:'#00d4ff',
+      pointBackgroundColor:'#00d4ff',
+      borderWidth:2
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,animation:{duration:300},
+    plugins:{legend:{display:false}},
+    scales:{r:{
+      ticks:{color:'#8899aa',font:{size:9},backdropColor:'transparent'},
+      grid:{color:'rgba(30,58,95,0.4)'},
+      pointLabels:{color:'#8899aa',font:{size:10}},
+      min:0,max:500
+    }}
+  }
+});
+
+const envChartInst = new Chart(document.getElementById('envChart'),{
+  type:'bar',
+  data:{
+    labels:['Temp (°C)','Humidity (%)','Pressure (kPa×1)','Speed (×10 cm/s)','Depth (×0.1 m)'],
+    datasets:[{
+      data:[32.0, 78.0, 101.3, 2.8, 12.4],
+      backgroundColor:['#ff9500','#00d4ff','#a855f7','#30d158','#ffd60a'],
+      borderRadius:4,
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,animation:{duration:300},
+    indexAxis:'y',
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.x.toFixed(2)}`}}},
+    scales:{
+      x:{ticks:{color:'#8899aa',font:{size:9}},grid:{color:'rgba(30,58,95,0.3)'},border:{color:'rgba(30,58,95,0.5)'}},
+      y:{ticks:{color:'#8899aa',font:{size:10}},grid:{display:false}}
+    }
+  }
+});
+
+// ══════════════════════════════════════════════════════
+// ALERTS SYSTEM
+// ══════════════════════════════════════════════════════
+let alertCount=0;
+function pushAlert(type, text, detail){
+  alertCount++;
+  const panel=document.getElementById('alertsPanel');
+  const ts=new Date().toLocaleTimeString();
+  const icons={safe:'✅',warn:'⚠️',danger:'🚨'};
+  const item=document.createElement('div');
+  item.className=`alert-item ${type}`;
+  item.innerHTML=`<div class="alert-icon">${icons[type]}</div>
+  <div class="alert-text">
+    <div class="at" style="color:${type==='safe'?'var(--safe)':type==='warn'?'var(--warn)':'var(--danger)'}">${text}</div>
+    <div class="as">${detail} — ${ts}</div>
+  </div>`;
+  panel.insertBefore(item, panel.firstChild);
+  while(panel.children.length>12) panel.removeChild(panel.lastChild);
+  document.getElementById('alertCount').textContent=`${alertCount} ACTIVE`;
+  if(type==='danger') document.getElementById('dangerOverlay').classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════
+// CSV FUNCTIONS
+// ══════════════════════════════════════════════════════
+function ts(){ return new Date().toISOString().replace('T',' ').substring(0,23); }
+
+function logRow(){
+  const row={
+    timestamp:ts(),
+    ch4:S.ch4.toFixed(2), co:S.co.toFixed(1),
+    o2:S.o2.toFixed(1), co2:S.co2.toFixed(3),
+    h2s:S.h2s.toFixed(2), dust:S.dust.toFixed(2),
+    temp:S.temp.toFixed(1), hum:S.hum.toFixed(1), pres:S.pres.toFixed(1),
+    lat:S.lat.toFixed(6), lon:S.lon.toFixed(6), alt:S.alt.toFixed(1),
+    depth:S.depth.toFixed(1), speed:S.speed.toFixed(2), dist:S.dist.toFixed(3),
+    loraRSSI:S.loraRSSI, batt:S.batt,
+    status: GAS_CFG.some(g=>gasStatus(g,S[g.key])==='danger')?'DANGER':
+            GAS_CFG.some(g=>gasStatus(g,S[g.key])==='warn') ?'WARNING':'SAFE'
+  };
+  dataLog.push(row);
+  if(dataLog.length>500) dataLog.shift();
+  document.getElementById('logCount').textContent=dataLog.length;
+  document.getElementById('logSize').textContent=((dataLog.length*180)/1024).toFixed(1)+' KB';
+  // Update table
+  const tbody=document.getElementById('csvBody');
+  const statusColor=row.status==='SAFE'?'var(--safe)':row.status==='WARNING'?'var(--warn)':'var(--danger)';
+  const tr=document.createElement('tr');
+  tr.innerHTML=`
+    <td>${row.timestamp}</td>
+    <td style="color:${parseFloat(row.ch4)>5?'var(--danger)':'var(--safe)'}">${row.ch4}</td>
+    <td style="color:${parseFloat(row.co)>25?'var(--warn)':'var(--text)'}">${row.co}</td>
+    <td style="color:${parseFloat(row.o2)<18?'var(--danger)':'var(--safe)'}">${row.o2}</td>
+    <td>${row.co2}</td>
+    <td>${row.temp}</td><td>${row.hum}</td>
+    <td style="color:var(--muted)">${row.lat}</td>
+    <td style="color:var(--muted)">${row.lon}</td>
+    <td><span class="badge badge-${row.status.toLowerCase()==='safe'?'safe':row.status.toLowerCase()==='warning'?'warn':'danger'}">${row.status}</span></td>`;
+  tbody.insertBefore(tr, tbody.firstChild);
+  while(tbody.children.length>50) tbody.removeChild(tbody.lastChild);
+}
+
+function exportCSV(){
+  const headers='Timestamp,CH4_LEL_%,CO_ppm,O2_%,CO2_%,H2S_ppm,Dust_mg_m3,Temp_C,Humidity_%,Pressure_kPa,Latitude,Longitude,Altitude_m,Depth_m,Speed_ms,Distance_km,LoRa_RSSI_dBm,Battery_%,Status\n';
+  const rows=dataLog.map(r=>Object.values(r).join(',')).join('\n');
+  const blob=new Blob([headers+rows],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`HANUMA_Mine_Data_${new Date().toISOString().replace(/[:.]/g,'-').substring(0,19)}.csv`;
+  a.click();
+  pushAlert('safe','CSV Exported Successfully',`${dataLog.length} records saved`);
+}
+
+function loadCSV(){
+  // Generate 20 rows of realistic sample data and populate the table
+  const tbody=document.getElementById('csvBody');
+  tbody.innerHTML='';
+  const samples=[];
+  let baseTime=Date.now()-40000;
+  for(let i=0;i<20;i++){
+    const t=new Date(baseTime+i*2000).toISOString().replace('T',' ').substring(0,23);
+    const ch4=(0.8+Math.random()*2.5).toFixed(2);
+    const co=(3+Math.random()*8).toFixed(1);
+    const o2=(19.8+Math.random()*1.2).toFixed(1);
+    const co2=(0.08+Math.random()*0.15).toFixed(3);
+    const lat=(13.710000+i*0.000020).toFixed(6);
+    const lon=(79.605000+i*0.000015).toFixed(6);
+    const st=parseFloat(ch4)>5?'DANGER':parseFloat(co)>25?'WARNING':'SAFE';
+    const stCls=st==='SAFE'?'safe':st==='WARNING'?'warn':'danger';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${t}</td>
+      <td style="color:${st==='DANGER'?'var(--danger)':'var(--safe)'}">${ch4}</td>
+      <td>${co}</td><td style="color:var(--safe)">${o2}</td><td>${co2}</td>
+      <td>3${1+i%5}.${Math.floor(Math.random()*9)}</td>
+      <td>${(75+Math.random()*8).toFixed(1)}</td>
+      <td style="color:var(--muted)">${lat}</td>
+      <td style="color:var(--muted)">${lon}</td>
+      <td><span class="badge badge-${stCls}">${st}</span></td>`;
+    tbody.insertBefore(tr, tbody.firstChild);
+  }
+  pushAlert('safe','CSV Data Loaded','Showing 20 sample records from mine inspection session');
+}
+
+function clearLog(){
+  dataLog=[];
+  document.getElementById('csvBody').innerHTML='';
+  document.getElementById('logCount').textContent='0';
+  document.getElementById('logSize').textContent='0 KB';
+  pushAlert('warn','Data Log Cleared','All logged records removed from memory');
+}
+
+// ══════════════════════════════════════════════════════
+// MAIN UPDATE LOOP
+// ══════════════════════════════════════════════════════
+let tick=0;
+let prevDanger=false;
+
+function update(){
+  tick++;
+  S.missionSec++;
+
+  // Walk sensors
+  S.ch4  = walk(S.ch4,  0.12, 0,   30);
+  S.co   = walk(S.co,   0.3,  0,   80);
+  S.o2   = walk(S.o2,   0.05, 15,  21);
+  S.co2  = walk(S.co2,  0.005,0,    2);
+  S.h2s  = walk(S.h2s,  0.04, 0,   15);
+  S.dust = walk(S.dust, 0.03, 0,    8);
+  S.temp = walk(S.temp, 0.05, 25,  50);
+  S.hum  = walk(S.hum,  0.1,  60,  95);
+  S.pres = walk(S.pres, 0.03, 98, 104);
+  S.loraRSSI = Math.round(walk(S.loraRSSI, 2, -120, -50));
+  S.wifiRSSI = Math.round(walk(S.wifiRSSI, 1.5, -100, -60));
+  S.gnss = Math.round(walk(S.gnss, 0.3, 4, 12));
+  S.batt = Math.max(0, S.batt - 0.002);
+  S.speed= walk(S.speed, 0.02, 0.1, 0.5);
+  S.dist+= S.speed*0.001;
+  S.depth= walk(S.depth, 0.05, 8, 30);
+
+  // GPS walk
+  S.lat += (Math.random()-0.5)*0.000008;
+  S.lon += Math.random()*0.000012;
+  S.alt += (Math.random()-0.5)*0.1;
+
+  // Update path
+  if(tick%3===0){
+    const lastPt = pathPts[pathPts.length-1];
+    mapAngle += (Math.random()-0.5)*0.1;
+    pathPts.push({
+      x: lastPt.x + Math.cos(mapAngle)*2.5,
+      y: lastPt.y + Math.sin(mapAngle)*2.5
+    });
+    if(pathPts.length>200) pathPts.shift();
+    drawMap();
+  }
+
+  // Update header
+  const h=Math.floor(S.missionSec/3600).toString().padStart(2,'0');
+  const m=Math.floor((S.missionSec%3600)/60).toString().padStart(2,'0');
+  const s=(S.missionSec%60).toString().padStart(2,'0');
+  document.getElementById('hTime').textContent=`${h}:${m}:${s}`;
+  document.getElementById('hDepth').textContent=`${S.depth.toFixed(1)} m`;
+  document.getElementById('hDist').textContent=`${S.dist.toFixed(3)} km`;
+  document.getElementById('hBatt').textContent=`${Math.round(S.batt)}%`;
+
+  // GPS display
+  document.getElementById('gLat').textContent=`LAT: ${S.lat.toFixed(6)}°N`;
+  document.getElementById('gLon').textContent=`LON: ${S.lon.toFixed(6)}°E`;
+  document.getElementById('gAlt').textContent=`ALT: ${S.alt.toFixed(1)} m`;
+
+  // Signal bars
+  const loraP=Math.max(0,Math.min(100,(S.loraRSSI+120)/70*100));
+  const wifiP=Math.max(0,Math.min(100,(S.wifiRSSI+100)/40*100));
+  const gnssP=Math.max(0,Math.min(100,(S.gnss-4)/8*100));
+  const battP=S.batt;
+  document.getElementById('bLora').style.width=loraP+'%';
+  document.getElementById('bWifi').style.width=wifiP+'%';
+  document.getElementById('bGps').style.width=gnssP+'%';
+  document.getElementById('bBatt').style.width=battP+'%';
+  document.getElementById('sLora').textContent=S.loraRSSI+' dBm';
+  document.getElementById('sWifi').textContent=S.wifiRSSI+' dBm';
+  document.getElementById('sGps').textContent=S.gnss+' SVs';
+  document.getElementById('sBatt').textContent=Math.round(S.batt)+'%';
+  S.pkts++; document.getElementById('cPkts').textContent=S.pkts;
+  document.getElementById('cAck').textContent=(99+Math.random()*0.9).toFixed(1)+'%';
+  document.getElementById('cLat').textContent=Math.round(14+Math.random()*8)+'ms';
+
+  // Update gas cards
+  updateGasCards();
+
+  // Gas trend chart
+  const nt=new Date().toLocaleTimeString().substring(3);
+  if(tick%2===0){
+    ch4Hist.push(S.ch4); ch4Hist.shift();
+    coHist.push(S.co); coHist.shift();
+    o2Hist.push(S.o2); o2Hist.shift();
+    timeLabels.push(nt); timeLabels.shift();
+    gasChartInst.data.datasets[0].data=[...ch4Hist];
+    gasChartInst.data.datasets[1].data=coHist.map(v=>v*0.1);
+    gasChartInst.data.datasets[2].data=[...o2Hist];
+    gasChartInst.update('none');
+  }
+
+  // Pie chart
+  if(tick%10===0){
+    const n2=100-S.o2-S.co2-S.ch4/100-S.h2s/1000-S.dust/100;
+    pieChartInst.data.datasets[0].data=[n2.toFixed(2),S.o2,S.co2,S.ch4/100,S.h2s/1000,S.dust/100,0.02];
+    pieChartInst.update('none');
+  }
+
+  // Radar chart
+  if(tick%5===0){
+    S.frontD=Math.round(walk(S.frontD, 15, 30, 500));
+    S.leftD=Math.round(walk(S.leftD, 12, 30, 500));
+    S.rightD=Math.round(walk(S.rightD, 12, 30, 500));
+    S.rearD=Math.round(walk(S.rearD, 10, 30, 500));
+    radarChartInst.data.datasets[0].data=[
+      S.frontD,
+      Math.round(walk(280,15,30,500)),
+      S.leftD,
+      Math.round(walk(420,12,30,500)),
+      S.rearD,
+      Math.round(walk(350,10,30,500)),
+      S.rightD,
+      Math.round(walk(240,15,30,500))
+    ];
+    radarChartInst.update('none');
+  }
+
+  // Env chart
+  if(tick%8===0){
+    envChartInst.data.datasets[0].data=[
+      S.temp, S.hum, S.pres, S.speed*100, S.depth/10
+    ];
+    envChartInst.update('none');
+  }
+
+  // Alerts
+  const anyDanger = GAS_CFG.some(g=>gasStatus(g,S[g.key])==='danger');
+  const anyWarn   = GAS_CFG.some(g=>gasStatus(g,S[g.key])==='warn');
+  if(anyDanger && !prevDanger){
+    const dg=GAS_CFG.find(g=>gasStatus(g,S[g.key])==='danger');
+    pushAlert('danger',`CRITICAL: ${dg.name} Exceeded Danger Limit`,`${dg.sym}: ${S[dg.key].toFixed(dg.decimals)} ${dg.unit} — EVACUATE SECTION`);
+    document.getElementById('dangerOverlay').classList.add('active');
+  } else if(!anyDanger){
+    document.getElementById('dangerOverlay').classList.remove('active');
+  }
+  if(anyWarn && tick%60===0){
+    const wg=GAS_CFG.find(g=>gasStatus(g,S[g.key])==='warn');
+    if(wg) pushAlert('warn',`Warning: ${wg.name} Elevated`,`${wg.sym}: ${S[wg.key].toFixed(wg.decimals)} ${wg.unit} — Monitor closely`);
+  }
+  prevDanger=anyDanger;
+
+  // Periodic safe status
+  if(tick%90===0 && !anyDanger && !anyWarn){
+    pushAlert('safe','All Systems Nominal',`GPS: ${S.lat.toFixed(4)}°N | Depth: ${S.depth.toFixed(1)}m | Battery: ${Math.round(S.batt)}%`);
+  }
+
+  // Log data every 2 ticks (~2 sec)
+  if(tick%2===0) logRow();
+}
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+buildGasCards();
+drawMap();
+pushAlert('safe','HANUMA Rover Online','System boot complete — All sensors initialised');
+pushAlert('safe','NavIC GPS Lock','8 satellites visible — Position accuracy ±1.8m');
+pushAlert('safe','LoRa Link Established','433 MHz — RSSI: -78 dBm — 2 relay nodes active');
+
+// Preload some data
+for(let i=0;i<15;i++){
+  S.missionSec++;
+  S.ch4=walk(S.ch4,0.1,0,30);
+  S.co=walk(S.co,0.2,0,80);
+  S.o2=walk(S.o2,0.04,15,21);
+  S.lat+=Math.random()*0.000010;
+  S.lon+=Math.random()*0.000012;
+  const lastPt=pathPts[pathPts.length-1];
+  mapAngle+=(Math.random()-0.5)*0.15;
+  pathPts.push({x:lastPt.x+Math.cos(mapAngle)*2.5,y:lastPt.y+Math.sin(mapAngle)*2.5});
+  ch4Hist.push(S.ch4); ch4Hist.shift();
+  coHist.push(S.co); coHist.shift();
+  o2Hist.push(S.o2); o2Hist.shift();
+  logRow();
+}
+drawMap();
+
+setInterval(update, 1000);
+</script>
+</body>
+</html>
