@@ -1,73 +1,64 @@
 # HANUMA Autonomous Mine Safety Rover
 
-A rugged autonomous underground mine inspection and rescue robot built for navigation, hazard detection, environmental monitoring, and remote situational awareness in GPS-denied and low-visibility mine environments.
+A rugged autonomous underground mine inspection and rescue rover designed for hazard detection, environmental monitoring, navigation, and remote situational awareness in GPS-denied, low-visibility mine environments.
 
-## Project Overview
+## Overview
 
-HANUMA is a six-wheel rocker-bogie rover designed to operate in hazardous underground conditions with minimal human intervention. The platform combines ROS 2 autonomy, LiDAR-based mapping, IMU and odometry fusion, 3D perception, gas sensing, LoRa communication, and a live telemetry dashboard to perform terrain navigation, hazard detection, and environmental monitoring.
+HANUMA is a six-wheel rocker-bogie robotic platform built for autonomous operation in hazardous underground conditions. The rover combines ROS 2 navigation, LiDAR mapping, 3D perception, IMU and odometry fusion, gas monitoring, long-range LoRa communication, and a live telemetry dashboard into a unified mine-safety inspection system.
 
-The system is designed for:
-- Autonomous exploration and mapping in underground corridors
-- Obstacle avoidance and path planning in cluttered environments
-- Gas, dust, humidity, and environmental monitoring
-- Remote operator visualization through a dashboard
-- Rescue support operations in GPS-denied mine conditions
-- Reliable communication in RF-attenuated and partially disconnected environments
+The platform is intended for:
+- autonomous exploration and mapping in underground corridors
+- obstacle avoidance and path planning in cluttered terrain
+- hazard awareness through gas, dust, and environmental sensing
+- operator visibility through a real-time dashboard
+- rescue support and pre-entry reconnaissance in risky mining zones
+- robust operation in GPS-denied and RF-constrained environments
 
-## Core System Architecture
+## Core Technologies
+
+### Autonomous Robotic Stack
+- ROS 2 navigation and control framework
+- SLAM and localization pipeline for GPS-denied operation
+- Nav2-based path planning and obstacle avoidance
+- IMU + wheel odometry + LiDAR fusion
+- 3D camera / depth perception for environment understanding
+- rugged six-wheel rocker-bogie mobility platform
 
 ### Perception and Sensing
-- 2D LiDAR for obstacle detection and mapping
-- 3D depth camera / vision sensor for scene understanding and object recognition
-- IMU for attitude estimation and stabilization
-- Wheel odometry for motion estimation
-- Gas and air-quality sensors for CH4, CO, CO2, O2, H2S, dust, humidity
-- Acoustic / vibration sensing for structure and collapse awareness
-- HD or IR camera for low-light and dusty inspection
+- 2D LiDAR for obstacle detection and map generation
+- 3D camera and vision sensors for scene interpretation
+- HD / IR camera for low-light and dusty visibility conditions
+- ultrasonic sensing for proximity detection
+- gas sensor array for CH4, CO, CO2, O2, H2S
+- dust, humidity, and environmental sensing
+- vibration or acoustic sensing for structure-awareness support
 
-### Compute Stack
-- Raspberry Pi 5 as the high-level autonomy computer
-- ROS 2 for robot control, navigation, sensor drivers, and data orchestration
-- SLAM and localization stack for GPS-denied navigation
-- Nav2 navigation framework for path planning and obstacle avoidance
-- Edge AI inference for object and hazard detection
-- ESP32 for low-level hardware control, sensor acquisition, and safety logic
-
-### Mobility and Hardware
-- Six-wheel rocker-bogie chassis
-- Stable traction over rough terrain
-- Designed for uneven mine floors and obstacle negotiation
-- Modular robotic frame for sensor integration and rapid development
+### Embedded and Hardware Layer
+- ESP32-based low-level control and sensor acquisition
+- motor control and safety logic
+- modular chassis design for sensor integration
+- robust electrical architecture for field deployment scenarios
 
 ### Communication and Resilience
-- LoRa for long-range, low-power communication
-- Multi-hop / breadcrumb-style communication concepts for constrained environments
-- Telemetry streaming to a dashboard and cloud or local monitoring workstation
-- Failsafe return-to-communication behavior if signal is lost
+- LoRa-based communication for long-range and low-power telemetry
+- breadcrumb / relay-style communication concept for degraded RF environments
+- mission-state reporting to a remote operator dashboard
+- failsafe logic for communication loss and safe return behavior
 
-## Autonomous Navigation and Intelligence
+## System Architecture
 
-HANUMA integrates a multi-layer autonomy stack for underground deployment:
+HANUMA follows a split-compute architecture:
 
-- Localization: fused wheel odometry + IMU + LiDAR-based environmental constraints
-- Mapping: occupancy and terrain representation for navigation
-- Planning: ROS 2 Nav2 planners and local/global cost maps
-- Obstacle avoidance: LiDAR and camera-based perception
-- Hazard detection: AI-assisted visual analysis and environmental alerting
-- Operator visibility: dashboard with live map, telemetry, gas trends, and rover state
+- Low-level layer: ESP32 for motor control, sensor reading, and hardware safety
+- High-level layer: Raspberry Pi 5 for ROS 2, SLAM, perception, and navigation
+- Data layer: sensor fusion, mapping, telemetry, and dashboard communication
+- Operator layer: remote dashboard with environmental data and rover state
 
-## Technical Highlights
+## Why HANUMA Matters
 
-- ROS 2 autonomous robot software stack
-- LiDAR-based mapping and navigation
-- 3D camera perception for mine scene understanding
-- Real-time gas and environmental monitoring
-- LoRa-based communication for harsh environments
-- Modular embedded hardware design using ESP32
-- Dashboard for remote command visibility and telemetry
-- Rover platform tailored for rough terrain and unsafe environments
+Underground mines are dangerous environments with poor visibility, toxic gases, unstable ground, and limited communication. Traditional inspection methods expose humans to significant risk. HANUMA reduces that risk by enabling autonomous scouting, monitoring, and mapping before human intervention.
 
-## Repository Structure
+## Repository Organization
 
 ```text
 HANUMA/
@@ -87,12 +78,11 @@ HANUMA/
 ├── Patent Report.pdf
 ├── Patent Report.docx
 ├── Project HANUMA Master Prompt.pdf
-├── PNT Lab - Final Report _ B Venkat Gopi Nayak & M Bindu Madhavi.docx
+├── PNT Lab - Final Report ...docx
 ├── docs/
 │   ├── README.md
-│   ├── presentations/
-│   ├── reports/
-│   └── images/
+│   ├── images/
+│   └── reports/
 ├── firmware/
 │   └── README.md
 ├── ros2_ws/
@@ -109,66 +99,35 @@ HANUMA/
     └── workflows/
 ```
 
-## Recommended GitHub Upload Structure
+## Project Highlights
 
-```text
-HANUMA_SIH2026/
-├── firmware/                 # ESP32 control and embedded logic
-├── ros2_ws/                  # ROS 2 navigation, SLAM, drivers, launch files
-├── edge_ai/                  # YOLO and vision / hazard detection scripts
-├── dashboard/                # HTML/JS dashboard and live telemetry interface
-├── simulation/               # Gazebo/Webots worlds, config, scripts
-├── docs/                     # PDFs, presentations, manuals, screenshots
-├── data/                     # logs, CSV, telemetry, mission data
-├── REPORT.md
-├── README.md
-├── .gitignore
-└── LICENSE (optional)
-```
+- ROS 2 autonomous navigation
+- LiDAR-based environment mapping
+- 3D vision and scene understanding
+- collision avoidance and path planning
+- gas and environmental hazard detection
+- rugged mine-ready platform
+- LoRa communication for harsh RF conditions
+- live dashboard telemetry and monitoring
+- modular embedded robotics architecture
 
-## Project Documents Included
+## GitHub Presentation Strategy
 
-- `HANUMA_DASHBOARD.html` — live dashboard prototype
-- `HANUMA_Robotic_Mine_Safety (2).pdf` — presentation or report export
-- `Patent Report.pdf` / `Patent Report.docx` — patent-related documentation
-- `IDEA.pdf` / `IDEA.pptx` — concept and ideation materials
-- `PNT Lab - Final Report ...docx` — formal internship and technical report source
-- CSV data logs for telemetry and environmental analysis
+For a professional GitHub repository:
+- `README.md` is the landing page
+- `REPORT.md` contains the technical project documentation
+- `docs/` stores presentations, PDFs, architecture files, and screenshots
+- source folders hold the software and system assets
+- CSV logs and telemetry files are preserved for traceability
 
-## Use Case
-
-HANUMA is intended to support:
-- mine inspection and mapping
-- hazardous gas detection
-- low-light underground inspection
-- rescue scouting before human entry
-- autonomous telemetry gathering and reporting
-- operator awareness in unsafe underground conditions
-
-## Why This Project Matters
-
-Traditional mine inspection relies heavily on manual human access, which is dangerous and inefficient. HANUMA addresses this by reducing risk through autonomous sensing, path planning, environment understanding, and communication resilience.
-
-## GitHub Ready Push Commands
+## Push Commands
 
 ```bash
-git init -b main
 git add .
-git commit -m "feat: initial HANUMA autonomous mine safety rover project upload"
-git branch -M main
-git remote add origin https://github.com/<YOUR_USERNAME>/HANUMA_SIH2026.git
-git push -u origin main
+git commit -m "feat: final HANUMA autonomous mine safety rover update"
+git push origin main
 ```
 
-If prompted for credentials, use a GitHub Personal Access Token instead of the account password.
+## Summary
 
-## Notes
-
-- Keep Markdown documentation in GitHub for direct rendering.
-- Keep presentations and compiled PDFs inside `docs/`.
-- If model weights or large datasets are required, use Git LFS when necessary.
-- Keep the repository public-facing and structured for evaluation and portfolio review.
-
-## Project Summary
-
-HANUMA represents a complete autonomous robotic platform for underground mine safety, combining embedded control, ROS 2 autonomy, sensor fusion, mapping, LiDAR perception, 3D vision, long-range communication, and actionable environmental monitoring in a single integrated system.
+HANUMA represents a complete autonomous robotic solution for underground mine safety. It integrates robotics, embedded systems, AI perception, mapping, navigation, long-range communication, and remote telemetry to address critical operational challenges in mine inspection and rescue scenarios.

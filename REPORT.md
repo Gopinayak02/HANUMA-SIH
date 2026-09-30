@@ -1,65 +1,69 @@
 # HANUMA Autonomous Mine Safety Rover
 
-## Project Report
+## Technical Project Report
 
 ## 1. Introduction
 
-HANUMA is an autonomous robotic platform designed for underground mine safety, inspection, and emergency support in hazardous environments. The project focuses on developing a rover that can navigate rough terrain, detect hazards, monitor environmental conditions, and provide remote situational awareness in GPS-denied and low-visibility mine corridors.
+HANUMA is an autonomous robotic platform developed for underground mine inspection, hazard analysis, environmental surveillance, and emergency support in hazardous mining environments. The current design addresses a critical operational requirement: enabling safe observation and reconnaissance in spaces where human access is dangerous, unstable, or impractical.
 
-The rover combines embedded control, ROS 2 autonomy, sensor fusion, perception, communication, and remote dashboarding into one integrated system. The design ensures an effective approach for mine safety applications where human entry may be dangerous or impossible.
+The system combines mobile robotics, embedded hardware, sensing, communication, autonomy, and dashboard-based monitoring into a single integrated system intended for field deployment in complex underground conditions.
 
-## 2. Problem Context
+## 2. Problem Definition
 
-Underground mining environments present severe challenges including:
-- poor visibility from dust and smoke
-- hazardous gases such as methane, carbon monoxide, and oxygen deficiency
-- narrow and unpredictable terrain
-- limited GPS and communication coverage
-- risk of structural instability and collapse
+Mining environments present multiple severe risks:
+- poor visibility due to dust and smoke
+- toxic gas exposure
+- difficult navigation in narrow and uneven spaces
+- reduced or absent GPS coverage
+- poor communication reliability in metal-rich and obstructed environments
+- potential structural instability and collapse risk
 
-Human inspection in such environments is highly risky. HANUMA addresses this by enabling autonomous reconnaissance, environmental monitoring, and hazard detection before humans enter the area.
+A mobile robotic system capable of sensing, navigating, and reporting these threats is highly valuable for operational safety and rescue support.
 
 ## 3. Objectives
 
-The main objectives of the project were to:
+The project was designed to achieve the following goals:
 
-- develop a robust six-wheel rover platform for rough terrain
-- integrate embedded and high-level computing architecture
-- implement ROS 2-based autonomy and navigation
-- use LiDAR and depth/vision sensing for perception and obstacle avoidance
-- incorporate IMU and odometry for localization in GPS-denied conditions
-- deploy SLAM and path planning for autonomous exploration
-- monitor gas, dust, temperature, and environmental safety parameters
-- establish resilient communication using LoRa for low-connectivity environments
-- provide real-time telemetry and a remote monitoring dashboard
+- build a rugged six-wheel mine rover platform
+- integrate low-level control with embedded hardware
+- implement high-level autonomy using ROS 2
+- utilize LiDAR and perception sensors for obstacle avoidance
+- fuse IMU and odometry for localization under GPS-denied conditions
+- include SLAM and map-based navigation for underground operation
+- monitor environmental parameters such as gas, dust, and humidity
+- provide resilient communication with LoRa
+- deliver real-time telemetry through a dashboard interface
 
-## 4. System Architecture
+## 4. Hardware Architecture
 
-### 4.1 Embedded Layer
-The lower-level control layer is based on ESP32 hardware, which handles:
-- motor control and PWM signals
+### 4.1 Chassis and Mobility
+The rover platform uses a six-wheel rocker-bogie style chassis to improve traction and stability on uneven terrain. This mobility configuration enables controlled motion across disturbed surfaces and harsh operational conditions common in mining scenarios.
+
+### 4.2 Embedded Control Layer
+The low-level control system is implemented using ESP32, which handles:
+- motor control
 - sensor acquisition
-- watchdog and fail-safe logic
-- data handling between sensors and processing units
+- hardware safety checks
+- embedded logic and fail-safe behavior
 
-### 4.2 High-Level Intelligence Layer
-The high-level embedded intelligence is handled by a Raspberry Pi 5 running ROS 2. This layer is responsible for:
-- sensor drivers
-- navigation and planning
-- localization and mapping
-- communication with the dashboard
-- perception and AI-based detection
+### 4.3 Computing Platform
+The high-level intelligence is handled by a Raspberry Pi 5, which runs the ROS 2 software stack. This layer connects perception, navigation, localization, and communication modules into a working autonomous robot architecture.
 
-### 4.3 Perception Modules
-The perception stack includes:
-- 2D LiDAR for obstacle detection and feature mapping
-- 3D camera / depth sensor for scene understanding and object detection
-- HD or IR camera for visibility under low light
-- IMU for motion and orientation estimation
-- Wheel odometry for relative movement estimation
+## 5. Sensing and Perception
 
-### 4.4 Environmental Monitoring
-The rover additionally monitors:
+The system incorporates a multi-sensor perception stack to support environmental awareness and decision-making.
+
+### 5.1 LiDAR
+LiDAR offers robust obstacle detection and map building in constrained and low-visibility environments. It is a core component of the navigation and obstacle-avoidance strategy.
+
+### 5.2 3D Vision
+A 3D camera or depth-sensing module provides additional scene understanding and can help with object detection, terrain awareness, and real-time inspection in difficult visibility conditions.
+
+### 5.3 Cameras and IR
+Cameras provide visual feedback for inspection and navigation support. The inclusion of IR or low-light-capable vision improves situational awareness where dust, darkness, or smoke may limit standard optical visibility.
+
+### 5.4 Environmental Sensors
+The rover includes gas and air-quality sensing for parameters such as:
 - CH4
 - CO
 - CO2
@@ -67,125 +71,91 @@ The rover additionally monitors:
 - H2S
 - dust
 - humidity
-- temperature and vibration-related parameters
+- temperature-related conditions
 
-These measurements are critical for identifying dangerous conditions before or during entry into mine areas.
+These measurements are essential for detecting mine hazards before humans enter unsafe areas.
 
-## 5. Autonomous Navigation and Localization
+## 6. Autonomous Navigation and Localization
 
-HANUMA is designed for localization and navigation in environments where GPS signals are unreliable or unavailable. The system uses a fused perception approach combining:
-
+The rover is designed for autonomous navigation in GPS-denied and partially unknown environments. The localization and navigation module is based on the combination of:
 - wheel odometry
 - IMU data
-- LiDAR observations
-- map-based localization constraints
+- LiDAR-based feature constraints
+- map and obstacle awareness
 
-The rover uses ROS 2 navigation tools to generate paths, estimate cost maps, and avoid obstacles while navigating underground corridors. This makes the platform useful for autonomous inspection and rescue support missions.
+This yields a robust navigation solution for corridor tracking, obstacle avoidance, and autonomous exploration in mine-like scenes.
 
-## 6. SLAM and Mapping
+## 7. SLAM and Mapping
 
-The platform is intended to operate with a ROS 2 SLAM and mapping pipeline for creating and maintaining a map of the mine environment. This is especially beneficial for:
-- corridor exploration
-- understanding environmental topology
-- planning return routes
-- locating hazardous zones
-- map-based autonomous navigation
+A critical function of the system is map generation and environment understanding. The platform is designed to use a ROS 2-compatible SLAM workflow for:
+- building an internal map of underground corridors
+- estimating rover position within the environment
+- identifying obstacles and constrained passages
+- planning safe routes and return paths
 
-The design is suited for GPS-denied indoor and underground navigation conditions.
+This is particularly important in underground settings where GPS is unreliable or unavailable.
 
-## 7. Communication System
+## 8. Communication System
 
-Mine environments are often characterized by severe RF attenuation and difficult communication conditions. HANUMA includes LoRa-based communication concepts to support resilient telemetry and control communication over longer distances and through obstructive environments.
+Underground mining environments often experience signal attenuation and communication disruption. To address this challenge, HANUMA incorporates LoRa-based communication for resilient long-range telemetry.
 
-The communication approach supports:
-- remote telemetry
-- low-power long-range reporting
-- operator awareness during remote operations
-- fallback and failsafe behavior when connectivity weakens
+This communication layer supports:
+- remote health monitoring
+- low-power long-range transmission
+- telemetry streaming in constrained environments
+- continuity of operation even when normal connectivity is weak
 
-## 8. Dashboard and Remote Monitoring
+## 9. Dashboard and Telemetry
 
-A real-time telemetry dashboard was developed to present:
-- rover position and status
-- gas trends
-- environmental data
-- obstacle information
-- navigation state
-- live stream or camera feed
-- system health indicators
+A custom dashboard provides real-time visibility of rover status and sensor information. The operator interface is designed to show:
+- environmental conditions
+- GPS or localization state
+- gas sensor trends
+- obstacle and map information
+- rover health and motion status
+- camera stream or remote visual feed
 
-This interface enables remote supervision and supports mission planning and rapid hazard response.
+This improves situational awareness and reduces operator uncertainty during inspection missions.
 
-## 9. Control and Safety Logic
+## 10. Safety and Failsafe Logic
 
-The system was designed with safety in mind, including:
-- low-level hardware watchdog logic
-- failsafe conditions for communication drop or sensor abnormalities
-- route-aware navigation behavior
-- restricted motion in risky conditions
-- autonomous return-to-communication logic in degraded states
+The rover design includes operational safety features such as:
+- embedded watchdog logic
+- fail-safe behavior for sensor anomalies
+- communication-loss handling
+- route-aware decision-making for risky conditions
+- autonomous return or stabilization behavior in degraded scenarios
 
-These features improve operational reliability in dangerous conditions.
-
-## 10. Methodology
-
-The system was developed in stages:
-
-1. requirement analysis for underground mine safety
-2. mechanical platform design and rocker-bogie chassis formulation
-3. embedded hardware integration for sensors and motors
-4. Raspberry Pi 5 setup with ROS 2 and driver integration
-5. LiDAR, IMU, odometry, and vision sensor calibration
-6. localization and mapping workflow development
-7. ROS 2 navigation and path planning implementation
-8. environmental monitoring and hazard detection integration
-9. LoRa communication and dashboard integration
-10. validation in simulated or field-like environments
+These mechanisms are important in mining operations where equipment reliability and safe behavior are essential.
 
 ## 11. Simulation and Validation
 
-Validation was performed through simulation, sensor-driven testing, and prototype demonstration. The platform was evaluated for:
-- mobility on uneven terrain
-- navigation through constrained spaces
-- sensor response in rough environments
-- dashboard data integrity
-- communication reliability
-- hazard monitoring effectiveness
+The platform was validated using simulation-based environments and system-level testing. The simulation framework was used to assess:
+- terrain interaction
+- obstacle handling
+- navigation behavior
+- sensor responsiveness
+- dashboard telemetry workflow
+- system readiness for mine-like conditions
 
-The simulation environment helps evaluate mine-like conditions before actual deployment in the field.
+This helps reduce risk before physical deployment and allows iterative improvement of the robot’s operational behavior.
 
 ## 12. Results and Discussion
 
-The prototype demonstrates the feasibility of an autonomous rover for underground mine monitoring and inspection. The integrated platform successfully combines:
-- mechanical mobility
-- ROS 2 autonomy
-- mapping and navigation
-- environmental sensing
-- low-level embedded control
-- remote monitoring
+The HANUMA prototype demonstrates the feasibility of an autonomous mine safety rover that can combine mobility, sensing, autonomy, and communication in one integrated platform. The implementation confirms the potential for:
+- autonomous inspection in dangerous underground spaces
+- gas and environmental hazard awareness
+- remote monitoring and data logging
+- improved safety through reduced human exposure
 
-This confirms the practicality of a mine-focused autonomous robotic system for safety and reconnaissance operations.
+The system provides a practical foundation for real-world deployment in research, safety, and industrial mine-assistance scenarios.
 
-## 13. Project Significance
+## 13. Conclusion
 
-HANUMA is relevant to modern mining safety because it reduces dependence on direct human exposure in dangerous zones. The project demonstrates a practical application of robotics, embedded systems, autonomy, perception, communication, and remote monitoring for operational mine safety.
+HANUMA is a complete autonomous mine-safety robotic platform that integrates embedded control, ROS 2 autonomy, LiDAR and vision perception, localization, environmental monitoring, communication, and dashboard-based supervision. It addresses essential needs in underground mining operations, where safety, data collection, and autonomous navigation are critical.
 
-## 14. Conclusion
+The project demonstrates a strong interdisciplinary implementation of robotics, embedded systems, AI-enabled perception, and autonomous systems engineering for a high-risk real-world domain.
 
-HANUMA is a compact, autonomous, and mission-oriented rover built specifically for underground mine hazard analysis and navigation support. Through the integration of ROS 2, SLAM, LiDAR, 3D vision, environmental sensing, embedded control, and LoRa communication, the system addresses multiple challenges of mine inspection and rescue support.
+## 14. Final Project Presentation
 
-The project represents a strong interdisciplinary implementation of robotics engineering, autonomous systems, and safety-focused industrial application.
-
-## 15. Recommended GitHub Presentation Layout
-
-For public portfolio and evaluation use, the repository should present:
-- `README.md` — overview and architecture
-- `REPORT.md` — technical project report
-- `docs/` — presentations, PDFs, diagrams, images
-- `firmware/` — embedded code and driver logic
-- `ros2_ws/` — ROS 2 packages and launch files
-- `dashboard/` — monitoring interface
-- `edge_ai/` — vision and detection scripts
-- `simulation/` — Gazebo/Webots validation assets
-
-This structure provides a clear and professional presentation of the project for GitHub reviewers, evaluators, and collaborators.
+This repository is intended to present the project in a professional and evaluable form, with documentation and assets arranged for GitHub visibility and technical review.
